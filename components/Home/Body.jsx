@@ -5,8 +5,21 @@ import { ArrowRightIcon } from 'react-native-heroicons/outline';
 // Import components
 import CategoryCard from './CategoryCard';
 import RestaurantCard from './RestaurantCard';
+import client from '../../sanity';
 
 const Categories = () => {
+  const [categories, setCategories] = React.useState([]);
+  React.useEffect(() => {
+    client
+      .fetch(
+        `
+    *[_type == "category"]`
+      )
+      .then((data) => {
+        setCategories(data);
+      });
+  }, []);
+
   return (
     <ScrollView
       horizontal
@@ -14,14 +27,35 @@ const Categories = () => {
       className="text-black"
       contentContainerStyle={{ paddingHorizontal: 15, paddingTop: 10 }}
     >
-      <CategoryCard imageURL="https://links.papareact.com/gn7" title="Pickup" />
-      <CategoryCard imageURL="https://links.papareact.com/gn7" title="Pickup" />
-      <CategoryCard imageURL="https://links.papareact.com/gn7" title="Pickup" />
+      {categories.map((category) => {
+        return <CategoryCard key={category._id} imageURL={category.image} title={category.title} />;
+      })}
     </ScrollView>
   );
 };
 
-const Featured = ({ title, description, featureCategory }) => {
+const Featured = ({ id, title, description }) => {
+  const [restaurants, setRestaurants] = React.useState([]);
+  React.useEffect(() => {
+    client
+      .fetch(
+        `*[_type == "featured" && _id == $id ] {
+      ...,
+      restaurants[]->{
+        ...,
+        dishes[]->,
+        type->{
+          name
+        }
+      },
+  }[0]`,
+        { id }
+      )
+      .then((data) => {
+        setRestaurants(data?.restaurants);
+      });
+  }, [id]);
+
   return (
     <View className="">
       <View className="flex-row mt-4 items-center justify-between px-4">
@@ -30,52 +64,65 @@ const Featured = ({ title, description, featureCategory }) => {
           <ArrowRightIcon color="#00CCBB" />
         </TouchableOpacity>
       </View>
-      <Text className="text-gray-500 px-4 text-xs">{description}</Text>
+      <Text className="text-gray-500 px-4 text-xs mb-2">{description}</Text>
       <ScrollView horizontal contentContainerStyle={{ paddingHorizontal: 15 }} showsHorizontalScrollIndicator={false}>
-        <RestaurantCard
-          id={1}
-          imgURL="https://links.papareact.com/gn7"
-          title="Yo! Sushi"
-          rating={4.5}
-          genre="Japanese"
-          address="123 Main St"
-          short_description="Traditional sushi restaurant"
-          dishes={[]}
-          long={20}
-          lat={0}
-        />
+        {restaurants?.map((restaurant) => {
+          return (
+            <RestaurantCard
+              key={restaurant._id}
+              id={restaurant._id}
+              imgURL={restaurant.image}
+              address={restaurant.address}
+              rating={restaurant.rating}
+              short_description={restaurant.short_description}
+              genre={restaurant.type?.name}
+              title={restaurant.name}
+              dishes={restaurant.dishes}
+              long={restaurant.long}
+              lat={restaurant.lat}
+            />
+          );
+        })}
       </ScrollView>
     </View>
   );
 };
 
 const Body = () => {
+  const [featuredCategory, setFeaturedCategory] = React.useState([]);
+
+  React.useEffect(() => {
+    client
+      .fetch(
+        `*[_type == "featured"] {
+      ...,
+      restaurants[]->{
+        ...,
+        dishes[]->,
+      },
+  }`
+      )
+      .then((data) => {
+        setFeaturedCategory(data);
+      });
+  }, []);
+
   return (
     <ScrollView className="bg-gray-100" contentContainerStyle={{ paddingBottom: 100 }}>
       {/* Categories */}
       <Categories />
 
       {/* Featured row */}
-      <Featured
-        id="firstFeature"
-        title="Featured"
-        description="Paid placement from our partners"
-        featureCategory="featured"
-      />
-
-      <Featured
-        id="secondFeature"
-        title="Tasty Discounts"
-        description="Everyone's been enjoying these juicy discounts"
-        featureCategory="discounts"
-      />
-
-      <Featured
-        id="thirdFeature"
-        title="Offers near you"
-        description="Why not support your local restaurants today"
-        featureCategory="offers"
-      />
+      {featuredCategory?.map((category) => {
+        return (
+          <Featured
+            key={category._id}
+            id={category._id}
+            title={category.name}
+            description={category.short_description}
+          />
+        );
+      })}
     </ScrollView>
   );
 };

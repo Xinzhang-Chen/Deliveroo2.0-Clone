@@ -44,5 +44,18 @@ export default defineType({
       type: 'number',
       validation: (Rule) => Rule.required().min(1).max(5).error('Rating must be between 1 and 5'),
     }),
+    defineField({
+      name: 'type',
+      title: 'Category',
+      type: 'reference',
+      validation: (Rule) => Rule.required(),
+      to: [{type: 'category'}],
+    }),
+    defineField({
+      name: 'dishes',
+      title: 'Dishes',
+      type: 'array',
+      of: [{type: 'reference', to: [{type: 'dish'}]}],
+    }),
   ],
 })
